@@ -35,4 +35,4 @@ Thumbs.db # Windows specific
 *.sql
  
 # Uploaded files (if applicable)
-/src/uploads
+/src/uploads.env

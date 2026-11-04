@@ -1,26 +1,34 @@
-require("dotenv").config();
+require('dotenv').config();
+
 module.exports = {
   development: {
-    HOST: process.env.POSTGRES_HOST,
-    USER: process.env.POSTGRES_USER,
-    PASSWORD: process.env.POSTGRES_PASSWORD,
-    DB: process.env.POSTGRES_DB,
-    dialect: "postgres",
+    HOST: process.env.DB_HOST || "localhost",
+    USER: process.env.DB_USER || "root",
+    PASSWORD: process.env.DB_PASSWORD || "",
+    DB: process.env.DB_NAME || "ecommerce",
+    dialect: "mysql",
     pool: {
-      max: 5,
+      max: 10,
       min: 0,
       acquire: 30000,
-      idle: 10000,
-    },
+      idle: 10000
+    }
   },
+
   production: {
-    use_env_variable: "DATABASE_URL",
-    dialect: "postgres",
-    dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false,
-      },
+    HOST: process.env.DB_HOST,
+    USER: process.env.DB_USER,
+    PASSWORD: process.env.DB_PASSWORD,
+    DB: process.env.DB_NAME,
+    dialect: "mysql",
+    pool: {
+      max: 20,
+      min: 5,
+      acquire: 30000,
+      idle: 10000
     },
-  },
+    dialectOptions: {
+      // ssl: { require: true, rejectUnauthorized: false }  // enable if needed
+    }
+  }
 };

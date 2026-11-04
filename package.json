@@ -4,7 +4,7 @@
   "description": "HRMS backend - Node.js + Postgres (Sequelize)",
   "main": "src/app.js",
   "scripts": {
-    "start": "node src/app.js",
+    "start": "nodemon src/app.js",
     "dev": "nodemon src/app.js"
   },
   "dependencies": {
@@ -12,6 +12,7 @@
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
+    "crypto": "^1.0.1",
     "dotenv": "^16.1.4",
     "exceljs": "^4.3.0",
     "express": "^4.18.2",
@@ -20,21 +21,21 @@
     "handlers": "^1.0.3",
     "jsonwebtoken": "^9.0.0",
     "moment": "^2.30.1",
-    "nodemailer": "^7.0.9",
+    "mysql2": "^3.24.6",
+    "nodemailer": "^7.0.13",
     "papaparse": "^5.5.3",
     "pdfkit": "^0.13.0",
-    "pg": "^8.11.0",
-    "pg-hstore": "^2.3.4",
     "sequelize": "^6.32.1",
     "stream-buffers": "^3.0.2",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
+    "twilio": "^6.2.0",
     "uuid": "^9.0.0",
     "winston": "^3.18.3",
     "winston-daily-rotate-file": "^5.0.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.14"
   },
   "compilerOptions": {
     "forceConsistentCasingInFileNames": true
