@@ -18,6 +18,13 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         unique: true
       },
+seller_type: {
+  type: DataTypes.ENUM("Inventory", "POD"),
+  allowNull: false,
+  validate: {
+    isIn: [["Inventory", "POD"]]
+  }
+},
 
       size: {
         type: DataTypes.STRING(50),
@@ -41,6 +48,10 @@ module.exports = (sequelize, DataTypes) => {
 
       sale_price: {
         type: DataTypes.DECIMAL(12, 2),
+        allowNull: true
+      },
+        delivery_date: {
+        type: DataTypes.DATE,
         allowNull: true
       },
 

@@ -57,7 +57,6 @@ module.exports = (sequelize, DataTypes) => {
           isIn: [["draft", "active", "inactive", "archived","published"]]
         }
       },
-
       archived_at: {
         type: DataTypes.DATE,
         allowNull: true

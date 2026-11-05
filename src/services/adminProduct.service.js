@@ -45,90 +45,33 @@ async createProduct(data, adminId) {
     );
 
     // 3. Create variants and inventory
-    for (const variantData of data.variants) {
+    // for (const variantData of data.variants) {
+s
+    //   if (!variantData.sku || variantData.price == null) {
+    //     throw new Error("Each variant requires SKU and price");
+    //   }
 
-      if (!variantData.sku || variantData.price == null) {
-        throw new Error("Each variant requires SKU and price");
-      }
+    //   const initialStock = Number(variantData.initial_stock ?? 0);
 
-      const initialStock = Number(variantData.initial_stock ?? 0);
+    //   if (!Number.isInteger(initialStock) || initialStock < 0) {
+    //     throw new Error("Initial stock must be a non-negative integer");
+    //   }
 
-      if (!Number.isInteger(initialStock) || initialStock < 0) {
-        throw new Error("Initial stock must be a non-negative integer");
-      }
+    //   const reorderLevel = Number(
+    //     variantData.reorder_level ?? 5
+    //   );
 
-      const reorderLevel = Number(
-        variantData.reorder_level ?? 5
-      );
+    //   if (!Number.isInteger(reorderLevel) || reorderLevel < 0) {
+    //     throw new Error("Reorder level must be a non-negative integer");
+    //   }
 
-      if (!Number.isInteger(reorderLevel) || reorderLevel < 0) {
-        throw new Error("Reorder level must be a non-negative integer");
-      }
-
-      // 4. Create product variant
-      const variant = await ProductVariant.create(
-        {
-          product_id: product.id,
-          sku: variantData.sku,
-          size: variantData.size || null,
-          color: variantData.color || null,
-          fit: variantData.fit || null,
-          price: variantData.price,
-          sale_price: variantData.sale_price ?? null,
-          status: "active",
-        },
-        { transaction }
-      );
-
-      // 5. Create inventory
-      const inventory = await Inventory.create(
-        {
-          variant_id: variant.id,
-          warehouse_id: data.warehouse_id,
-          quantity_on_hand: initialStock,
-          quantity_reserved: 0,
-          reorder_level: reorderLevel,
-          updated_by: adminId,
-        },
-        { transaction }
-      );
-
-      // 6. Record initial stock movement
-      if (initialStock > 0) {
-        await StockMovement.create(
-          {
-            warehouse_id: inventory.warehouse_id,
-            variant_id: variant.id,
-            movement_type: "INITIAL_STOCK",
-            quantity_change: initialStock,
-            quantity_on_hand_after: inventory.quantity_available,
-            quantity_reserved_after: inventory.quantity_reserved,
-            reference_type: "PRODUCT_CREATION",
-            reference_id: product.id,
-            reason: "Initial product stock",
-            created_by: adminId,
-          },
-          { transaction }
-        );
-      }
-    }
+    // }
 
     // 7. Return created product with variants and inventory
     return Product.findByPk(product.id, {
-      include: [
-        {
-          model: ProductVariant,
-          as: "variants",
-          include: [
-            {
-              model: Inventory,
-              as: "inventory",
-            },
-          ],
-        },
-      ],
       transaction,
     });
+  
   });
 }
 
@@ -163,178 +106,333 @@ async listProducts  ({
     });
 };
     
-    async getProductById (productId){
-      const product = await Product.findByPk(productId, {
-        include: [
-          {
-            model: ProductVariant,
-            as: "variants",
-            include: [{ model: Inventory, as: "inventory" }]
-          }
-        ]
+async getProductById (productId){
+const product = await Product.findByPk(productId, {
+  include: [
+    {
+      model: ProductVariant,
+      as: "variants",
+      include: [{ model: Inventory, as: "inventory" }]
+    }
+  ]
+});
+
+if (!product) {
+  throw new Error("Product not found");
+}
+
+return product;
+};
+
+    
+    
+async updateProduct (productId, data, adminId) {
+  const product = await Product.findByPk(productId);
+
+  if (!product || product.status === "ARCHIVED") {
+    throw new Error("Product not found or archived");
+  }
+
+  const allowedFields = [
+    "name",
+    "slug",
+    "description",
+    "base_price",
+    "status",
+    "category_id",
+    "status"
+  ];
+
+  const updates = {};
+
+  for (const field of allowedFields) {
+    if (data[field] !== undefined) {
+      updates[field] = data[field];
+    }
+  }
+
+
+  updates.updated_by = adminId;
+
+  await product.update(updates);
+
+  return this.getProductById(productId);
+};
+
+async createVariant(productId, data, adminId) {
+  const transaction = await sequelize.transaction();
+
+  try {
+    // 1. Check whether product exists
+    const product = await Product.findByPk(productId, {
+      transaction
+    });
+
+    if (!product) {
+      throw new Error("Product not found");
+    }
+
+    // 2. Check duplicate SKU
+    const existingVariant = await ProductVariant.findOne({
+      where: {
+        sku: data.sku
+      },
+      transaction
+    });
+
+    if (existingVariant) {
+      throw new Error("Variant SKU already exists");
+    }
+
+  const deliveryDate = new Date(data.delivery_date);
+  const currentDate = new Date();
+  let formattedDate ;
+  let dateCount;
+
+deliveryDate.setHours(0, 0, 0, 0);
+currentDate.setHours(0, 0, 0, 0);
+
+if (deliveryDate.getTime() !== currentDate.getTime()) {
+
+    const daysToAdd = 5; // or 6
+
+    const postDaysCalculate = new Date(currentDate);
+
+    postDaysCalculate.setDate(
+        postDaysCalculate.getDate() + daysToAdd
+    );
+
+    // Format as YYYY-MM-DD
+     formattedDate = [
+        postDaysCalculate.getFullYear(),
+        String(postDaysCalculate.getMonth() + 1).padStart(2, "0"),
+        String(postDaysCalculate.getDate()).padStart(2, "0")
+    ].join("-");
+
+    // Calculate date difference in days
+     dateCount = Math.round(
+        (postDaysCalculate - currentDate) / (1000 * 60 * 60 * 24)
+    );
+  }
+
+    // 3. Validate warehouse for inventory products
+    let warehouse = null;
+    let inventory = null;
+
+
+    // 4. Create product variant
+    const variant = await ProductVariant.create(
+      {
+        product_id: productId,
+        sku: data.sku,
+        status: data.status,
+        color: data.color || null,
+        size: data.size || null,
+        price: data.price,
+        sale_price: data.sale_price || null,
+        fit: data.fit || null,
+        created_by: adminId,
+        seller_type: data.seller_type,
+        delivery_date: formattedDate
+      },
+      { transaction }
+    );
+
+    // 5. Create inventory for inventory-based products
+    if (data.seller_type === "Inventory") {
+
+      
+  
+      if (!data.warehouse_id) {
+        throw new Error("Warehouse is required for inventory products");
+      }
+
+      warehouse = await Warehouse.findByPk(data.warehouse_id, {
+        transaction
       });
-    
-      if (!product) {
-        throw new Error("Product not found");
+
+      if (!warehouse) {
+        throw new Error("Warehouse not found");
       }
+      console.log('warehous_detail',warehouse)
     
-      return product;
+      inventory = await Inventory.create(
+        {
+          variant_id: variant.id,
+          warehouse_id: warehouse.id,
+          quantity_available: data.quantity_available ?? 0,
+          quantity_reserved: data.quantity_reserved ?? 0,
+          reorder_level: data.reorder_level ?? 0,
+          created_by: adminId
+        },
+        { transaction }
+      );
+
+      // 6. Record initial stock movement
+      if (
+        Number(data.quantity_available ?? 0) > 0 ||
+        Number(data.quantity_reserved ?? 0) > 0
+      ) {
+        await StockMovement.create(
+          {
+            warehouse_id: inventory.warehouse_id,
+            variant_id: variant.id,
+            movement_type: "INITIAL_STOCK",
+            quantity_change: Number(data.quantity_available ?? 0),
+            quantity_on_hand_after: inventory.quantity_available,
+            quantity_reserved_after: inventory.quantity_reserved,
+            reference_type: "PRODUCT_CREATION",
+            reference_id: product.id,
+            reason: "Initial product stock",
+            created_by: adminId
+          },
+          { transaction }
+        );
+      }
+    }
+
+    // 7. Commit once
+    await transaction.commit();
+
+    // 8. Return result
+    if (data.seller_type === "POD") {
+      return {
+        message: "POD request queued",
+        status: true,
+        variant,
+        delivery_date_count:dateCount
+      };
+    }
+
+    return {
+      message: "Inventory variant created successfully",
+      status: true,
+      variant,
+      inventory
     };
 
-    
-    
-    async updateProduct (productId, data, adminId) {
-      const product = await Product.findByPk(productId);
-    
-      if (!product || product.status === "ARCHIVED") {
-        throw new Error("Product not found or archived");
-      }
-    
-      const allowedFields = [
-        "name",
-        "slug",
-        "description",
-        "base_price",
-        "status",
-        "category_id",
-        "status"
-      ];
-    
-      const updates = {};
-    
-      for (const field of allowedFields) {
-        if (data[field] !== undefined) {
-          updates[field] = data[field];
-        }
-      }
+  } catch (error) {
+    // Rollback only if transaction has not already finished
+    if (!transaction.finished) {
+      await transaction.rollback();
+    }
 
-    
-      updates.updated_by = adminId;
-    
-      await product.update(updates);
-    
-      return this.getProductById(productId);
-    };
-     async  createVariant (productId, data, adminId) {
-        const transaction = await sequelize.transaction();
-    
-        try {
-          // 1. Check whether product exists
-          const product = await Product.findByPk(productId, {
-            transaction
-          });
-    
-          if (!product) {
-            throw new Error("Product not found");
-          }
-    
-          // 2. Check duplicate SKU
-          const existingVariant = await ProductVariant.findOne({
-            where: {
-              sku: data.sku
-            },
-            transaction
-          });
-    
-          if (existingVariant) {
-            throw new Error("Variant SKU already exists");
-          }
-    
-          // 3. Validate warehouse if supplied
-          let warehouse = null;
-    
-          if (data.warehouse_id) {
-            warehouse = await Warehouse.findByPk(data.warehouse_id, {
-              transaction
-            });
-    
-            if (!warehouse) {
-              throw new Error("Warehouse not found");
-            }
-          }
-    
-          // 4. Create product variant
-          const variant = await ProductVariant.create(
-            {
-              product_id: productId,
-              sku: data.sku,
-              status: data.status,
-              color: data.color || null,
-              size: data.size || null,
-              price: data.price,
-              sale_price: data.sale_price || null,
-              fit: data.fit || null,
-              created_by: adminId
-            },
-            { transaction }
-          );
-    
-          // 5. Create inventory only if warehouse is supplied
-          let inventory = null;
-    
-          if (warehouse) {
-            inventory = await Inventory.create(
-              {
-                variant_id: variant.id,
-                warehouse_id: data.warehouse_id,
-                quantity_available: data.quantity_available ?? 0,
-                quantity_reserved: data.quantity_reserved ?? 0,
-                reorder_level: data.reorder_level ?? 0,
-                created_by: adminId
-              },
-              { transaction }
-            );
-          }
-    
-          await transaction.commit();
-    
-          return {
-            variant,
-            inventory
-          };
-    
-        } catch (error) {
-          await transaction.rollback();
-          throw error;
-        }
-      }
-    
-    async updateVariant (productId, variantId, data) {
-      const variant = await ProductVariant.findOne({
+    throw error;
+  }
+}
+
+async updateVariant(productId ,variantId, data, adminId) {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const variant = await ProductVariant.findOne({
         where: {
           id: variantId,
           product_id: productId
         }
       });
     
-      if (!variant) {
-        throw new Error("Variant not found for this product");
+
+    if (!variant) {
+      throw new Error("Product variant not found");
+    }
+
+    const sellerType = String(
+      data.seller_type ?? variant.seller_type
+    );
+
+    // Update ProductVariant fields
+    await variant.update(
+      {
+        sku: data.sku ?? variant.sku,
+        color: data.color ?? variant.color,
+        size: data.size ?? variant.size,
+        price: data.price ?? variant.price,
+        sale_price: data.sale_price ?? variant.sale_price,
+        fit: data.fit ?? variant.fit,
+        status: data.status ?? variant.status,
+        seller_type: sellerType,
+        delivery_date:data.delivery_date,
+        updated_by: adminId,
+      },
+      { transaction }
+    );
+
+    if (sellerType === "Inventory") {
+      const inventory = await Inventory.findOne({
+        where: { variant_id: variant.id },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+
+      if (!inventory) {
+        throw new Error("Inventory record not found for this variant");
       }
-    
-      const allowedFields = [
-        "sku",
-        "size",
-        "color",
-        "fit",
-        "price",
-        "sale_price",
-        "status"
-      ];
-    
-      const updates = {};
-    
-      for (const field of allowedFields) {
-        if (data[field] !== undefined) {
-          updates[field] = data[field];
-        }
+
+      const oldAvailable = Number(inventory.quantity_available);
+      const newAvailable =
+        data.quantity_available !== undefined
+          ? Number(data.quantity_available)
+          : oldAvailable;
+
+      const oldReserved = Number(inventory.quantity_reserved);
+      const newReserved =
+        data.quantity_reserved !== undefined
+          ? Number(data.quantity_reserved)
+          : oldReserved;
+
+      const availableDelta = newAvailable - oldAvailable;
+      const reservedDelta = newReserved - oldReserved;
+
+      await inventory.update(
+        {
+          quantity_available: newAvailable,
+          quantity_reserved: newReserved,
+          reorder_level:
+            data.reorder_level ?? inventory.reorder_level,
+          warehouse_id:
+            data.warehouse_id ?? inventory.warehouse_id,
+          updated_by: adminId,
+        },
+        { transaction }
+      );
+
+      console.log('insert__', availableDelta, reservedDelta)
+      // Record stock movement only if quantity changed
+      if (availableDelta !== 0 || reservedDelta !== 0) {
+        await StockMovement.create(
+          {
+            variant_id: variant.id,
+            warehouse_id:
+              data.warehouse_id ?? inventory.warehouse_id,
+            movement_type: "ADJUSTMENT",
+            quantity_on_hand_after: availableDelta,
+            quantity_change:0,
+            quantity_reserved_after: reservedDelta,
+            created_by: adminId,
+            reference_type:"PRODUCT_UPDATAION"
+          },
+          { transaction }
+        );
       }
-    
-      await variant.update(updates);
-    
-      return variant;
+    }
+
+    await transaction.commit();
+
+    return {
+      message: "Variant updated successfully",
+      variant,
     };
+  } catch (error) {
+    if (!transaction.finished) {
+      await transaction.rollback();
+    }
+
+    throw error;
+  }
+}
     
-    async deleteVariant(productId, variantId) {
+async deleteVariant(productId, variantId) {
   const transaction = await sequelize.transaction();
 
   try {
@@ -387,108 +485,110 @@ async listProducts  ({
     throw error;
   }
 }
-    async submitForPublishing (productId) {
-      const product = await this.getProductById(productId);
-    
-      if(product.status !== "active"){
-        const updateStatus = await Product.update(
-                {
-                    status: "active"
-                },
-                {
-                    where: {
-                    id: product.id
-                    }
+async submitForPublishing (productId) {
+const product = await this.getProductById(productId);
+
+let updateStatus= null;
+if (product.status !== "active" || product.status !== "draft") {
+  throw new Error("Only active or drafted products can be submitted");
+}
+
+if (!product.variants || product.variants.length === 0) {
+  throw new Error("Product must have at least one variant");
+}
+
+for (const variant of product.variants) {
+  if (!variant.sku || Number(variant.price) <= 0) {
+    throw new Error("Each variant requires a valid SKU and price");
+  }
+}
+  if(product.status == "active" || product.status == "draft"){
+    updateStatus = await Product.update(
+            {
+                status: "draft"
+            },
+            {
+                where: {
+                id: product.id
                 }
-                );
-      }
-      if (product.status !== "active") {
-        throw new Error("Only active products can be submitted");
-      }
+            }
+          );
+}
+// This indicates the product passed validation.
+// Publishing is a separate action.
+return {
+  productId: product.id,
+  status:updateStatus.status,
+  validForPublishing: true
+};
+};
     
-      if (!product.variants || product.variants.length === 0) {
-        throw new Error("Product must have at least one variant");
-      }
-    
-      for (const variant of product.variants) {
-        if (!variant.sku || Number(variant.price) <= 0) {
-          throw new Error("Each variant requires a valid SKU and price");
-        }
-      }
-      // This indicates the product passed validation.
-      // Publishing is a separate action.
-      return {
-        productId: product.id,
-        validForPublishing: true
-      };
-    };
-    
-    async publishProduct (productId, adminId) {
-      const product = await this.getProductById(productId);
+async publishProduct (productId, adminId) {
+const product = await this.getProductById(productId);
 
-       console.log("Product ID:", product.id);
-  console.log("Product Name:", product.product_name);
-  console.log("Product Status:", product.status);
+  console.log("Product ID:", product.id);
+console.log("Product Name:", product.product_name);
+console.log("Product Status:", product.status);
 //   console.log("Product Variants:", product.variants);
-        
+  
+
+if (product.status !== "active" || product.status !== "draft") {
+  throw new Error("Only active or drafted products can be published");
+}
+
+if (!product.variants?.length) {
+  throw new Error("Product must have at least one variant");
+}
+
+for (const variant of product.variants) {
+  if (!variant.status || Number(variant.price) <= 0) {
+    throw new Error("All published variants must be active and priced");
+  }
+}
+
+await product.update({
+  status: "published",
+  updated_by: adminId,
+  published_by: adminId
+});
+
+return this.getProductById(productId);
+};
     
-      if (product.status !== "active") {
-        throw new Error("Only active products can be published");
-      }
+    // async archiveProduct (productId, adminId) {
+    //   const product = await Product.findByPk(productId);
     
-      if (!product.variants?.length) {
-        throw new Error("Product must have at least one variant");
-      }
+    //   if (!product) {
+    //     throw new Error("Product not found");
+    //   }
     
-      for (const variant of product.variants) {
-        if (!variant.status || Number(variant.price) <= 0) {
-          throw new Error("All published variants must be active and priced");
-        }
-      }
+    //   await product.update({
+    //     status: "ARCHIVED",
+    //     archived_at: new Date(),
+    //     updated_by: adminId
+    //   });
     
-      await product.update({
-        status: "published",
-        updated_by: adminId,
-        published_by: adminId
-      });
+    //   return product;
+    // };
     
-      return this.getProductById(productId);
-    };
+    // async restoreProduct (productId, adminId) {
+    //   const product = await Product.findByPk(productId);
     
-    async archiveProduct (productId, adminId) {
-      const product = await Product.findByPk(productId);
+    //   if (!product || product.status !== "ARCHIVED") {
+    //     throw new Error("Archived product not found");
+    //   }
     
-      if (!product) {
-        throw new Error("Product not found");
-      }
+    //   await product.update({
+    //     status: "DRAFT",
+    //     archived_at: null,
+    //     updated_by: adminId
+    //   });
     
-      await product.update({
-        status: "ARCHIVED",
-        archived_at: new Date(),
-        updated_by: adminId
-      });
-    
-      return product;
-    };
-    
-    async restoreProduct (productId, adminId) {
-      const product = await Product.findByPk(productId);
-    
-      if (!product || product.status !== "ARCHIVED") {
-        throw new Error("Archived product not found");
-      }
-    
-      await product.update({
-        status: "DRAFT",
-        archived_at: null,
-        updated_by: adminId
-      });
-    
-      return product;
-    };
+    //   return product;
+    // };
 
 
-    async adjustStock  (
+async adjustStock  (
   variantId,
   { quantity, reason },
   adminId

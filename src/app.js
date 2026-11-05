@@ -44,6 +44,32 @@ app.use(
   require("./routes/adminProduct.route")
 );
 
+app.use(
+  "/api/ecommerce/products",
+  require("./routes/customerProduct.routes")
+);
+
+
+app.use(
+  "/api/ecommerce/cart",
+  require("./routes/cart.routes")
+);
+
+app.use(
+  "/api/ecommerce/checkout",
+  require("./routes/checkout.route")
+);
+
+// app.use(
+//   "/api/ecommerce/payments",
+//   require("./routes/payment.route")
+// );
+
+// app.use(
+//   "/api/ecommerce/admin/inventory",
+//   require("./routes/adminInventory.route")
+// );
+
 // // IN USE
 // app.use("/api/application", require("./routes/applicationRouter"));
 // app.use("/api/report", require("./routes/reportRouter"));

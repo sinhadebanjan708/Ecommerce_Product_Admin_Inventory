@@ -103,6 +103,8 @@ const createVariant = async (req, res) => {
       fit,
       sale_price,
       status,
+      seller_type,
+      delivery_date,
       warehouse_id,
       quantity_reserved,
       quantity_available,
@@ -150,6 +152,8 @@ const createVariant = async (req, res) => {
         fit,
         price,
         sale_price,
+        seller_type,
+        delivery_date,
         warehouse_id,
         quantity_reserved,
         quantity_available,
@@ -184,7 +188,8 @@ const updateVariant = async (req, res) => {
     const variant = await service.updateVariant(
       req.params.productId,
       req.params.variantId,
-      req.body
+      req.body,
+      req.user.user_id
     );
 
     return res.status(200).json({
