@@ -77,7 +77,20 @@ module.exports = (sequelize, DataTypes) => {
   );
 
     Product.associate = (models) => {
+
+  console.log("Checking Product associations:");
+
+  console.log("Category:", models.Category);
+  console.log("Subcategory:", models.Subcategory);
+  console.log("User:", models.User);
+  console.log("ProductImage:", models.ProductImage);
+  console.log("ProductVariant:", models.ProductVariant);
+  console.log("ProductReview:", models.ProductReview);
     Product.belongsTo(models.Category, { foreignKey: 'category_id', as: 'category' });
+    Product.belongsTo(models.Subcategory, {
+    foreignKey: "subcategory_id",
+    as: "subcategory"
+    });
     Product.belongsTo(models.User, { foreignKey: 'created_by', as: 'creator' });
     Product.hasMany(models.ProductImage, { foreignKey: 'product_id', as: 'images' });
     Product.hasMany(models.ProductVariant, { foreignKey: 'product_id', as: 'variants' });

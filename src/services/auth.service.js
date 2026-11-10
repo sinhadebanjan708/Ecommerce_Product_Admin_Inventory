@@ -20,6 +20,8 @@ class AuthService {
   // Send OTP (Register)
  async refreshToken(refreshToken) {
 
+  console.log('refresh-token__',refreshToken)
+
     if (!refreshToken) {
       throw new Error('Refresh token is required');
     }

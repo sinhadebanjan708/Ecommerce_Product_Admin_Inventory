@@ -240,6 +240,25 @@ const sequelize = new Sequelize(
 );
 
 // Load all model files
+// fs.readdirSync(__dirname)
+//   .filter(file => {
+//     return (
+//       file.indexOf('.') !== 0 &&
+//       file !== basename &&
+//       file.slice(-3) === '.js' &&
+//       !file.endsWith('.test.js')
+//     );
+//   })
+//   .forEach(file => {
+//     const model = require(path.join(__dirname, file))(
+//       sequelize,
+//       Sequelize.DataTypes
+//     );
+
+//     db[model.name] = model;
+//   });
+
+
 fs.readdirSync(__dirname)
   .filter(file => {
     return (
@@ -250,15 +269,30 @@ fs.readdirSync(__dirname)
     );
   })
   .forEach(file => {
-    const model = require(path.join(__dirname, file))(
+
+    console.log("Loading model:", file);
+
+    const modelFactory = require(path.join(__dirname, file));
+
+    const model = modelFactory(
       sequelize,
       Sequelize.DataTypes
     );
 
+    if (!model) {
+      throw new Error(
+        `Model initialization failed: ${file} returned undefined`
+      );
+    }
+
     db[model.name] = model;
+
   });
 
 console.log("Loaded models:", Object.keys(db));
+
+console.log("Category:", !!db.Category);
+console.log("Subcategory:", !!db.Subcategory);
 // Define model associations
 Object.keys(db).forEach(modelName => {
   if (typeof db[modelName].associate === 'function') {

@@ -11,6 +11,7 @@ const sequelize = db.sequelize;
 const PORT = process.env.PORT || 5000;
 
 const auth = require("./middlewares/auth");
+const path = require("path");
 // const errorHandler = require("./middlewares/errorHandler");
 // const authController = require("./controllers/authController");
 // const taskController = require("./controllers/taskController");
@@ -37,11 +38,27 @@ app.use((req, res, next) => {
 // Route Handling
 // app.use("/api/taskStatusInfo", require("./routes/taskStatusInfoRouter"));
 // app.use("/api/ticketingSystem", require("./routes/ticketingSystemRouter"));
+
+app.use(
+  "/uploads",
+  express.static(path.join(process.cwd(), "uploads"))
+);
 app.use("/api/ecommerce", require("./routes/auth.route"));
 app.use("/api/ecommerce", require("./routes/customerAddressRouter"));
 app.use(
   "/api/ecommerce/admin",
   require("./routes/adminProduct.route")
+);
+
+
+app.use(
+  "/api/ecommerce/categories",
+  require("./routes/category.routes")
+);
+
+app.use(
+  "/api/ecommerce/sub-categories",
+  require("./routes/subcategory.routes")
 );
 
 app.use(

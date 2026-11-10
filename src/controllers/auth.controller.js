@@ -5,7 +5,7 @@ const authService = require('../services/auth.service');
     try {
 
       const { refreshToken } = req.body;
-
+      console.log('rr__',refreshToken)
       const result = await authService.refreshToken(
         refreshToken
       );
