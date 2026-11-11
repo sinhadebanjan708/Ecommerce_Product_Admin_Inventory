@@ -34,7 +34,7 @@ class SubcategoryService {
       category_id,
       subcategory_name,
       slug,
-      image
+      image:data.image
     });
   }
 
@@ -72,18 +72,19 @@ class SubcategoryService {
   }
 
   // Get subcategory by ID
-  async getSubcategoryById(subcategoryId) {
-    const subcategory = await Subcategory.findByPk(
-      subcategoryId,
-      {
+async   getSubcategoryById(subcategoryId) {
+    const subcategory = await Subcategory.findOne({
+        where: {
+            id: subcategoryId,
+            status: "active"
+        },
         include: [
-          {
-            model: Category,
-            as: "category"
-          }
+            {
+                model: Category,
+                as: "category"
+            }
         ]
-      }
-    );
+    });
 
     if (!subcategory) {
       throw new Error("Subcategory not found");

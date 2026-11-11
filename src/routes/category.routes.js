@@ -5,6 +5,9 @@ const router = express.Router();
 const categoryController = require("../controllers/category.controller");
 
 const uploadCategory = require("../middleware/uploadCategory");
+const {
+    categoryUpload
+} = require("../middleware/uploadMiddleware");
 
 const {
   authMiddleware,
@@ -29,14 +32,14 @@ router.get("/:id", ...customerOnly, categoryController.getCategoryById);
 router.post(
   "/",
   ...adminOnly,
-    uploadCategory.single("image"),
+    categoryUpload.single("image"),
   categoryController.createCategory
 );
 
 router.put(
   "/:categoryId",
  ...adminOnly,
-   uploadCategory.single("image"),
+   categoryUpload.single("image"),
   categoryController.updateCategory
 );
 

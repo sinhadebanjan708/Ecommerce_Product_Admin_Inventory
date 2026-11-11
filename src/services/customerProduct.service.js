@@ -2,93 +2,120 @@ const {
   Product,
   ProductVariant,
   ProductImage,
-  Inventory
+  Inventory,
+  Category,
+Subcategory
 } = require("../models");
-
+const { Op, Sequelize } = require("sequelize");
 class CustomerProductService {
 
-  async getProducts(filters = {}) {
-    const where = {
-      status: "published"
+ getProductIncludes = () => [
+  {
+    model: Category,
+    as: "category",
+    attributes: ["id", "category_name"]
+  },
+  {
+    model: Subcategory,
+    as: "subcategory",
+    attributes: ["id", "subcategory_name"]
+  },
+  {
+    model: ProductImage,
+    as: "images",
+    attributes: ["id", "image_url"]
+  },
+  {
+    model: ProductVariant,
+    as: "variants",
+    attributes: [
+      "id",
+      "sku",
+      "color",
+      "size",
+      "price",
+      "sale_price",
+      "status"
+    ],
+    where: { status: "ACTIVE" },
+    required: false
+  }
+];
+  
+
+async getProducts(query) {
+  const { page, limit, offset } = this.getPagination(query);
+
+  const where = {
+    status: "PUBLISHED"
+  };
+
+  if (query.categoryId) {
+    where.category_id = query.categoryId;
+  }
+
+  if (query.subcategoryId) {
+    where.subcategory_id = query.subcategoryId;
+  }
+
+  if (query.minPrice || query.maxPrice) {
+    where.base_price = {};
+
+    if (query.minPrice) {
+      where.base_price[Op.gte] = Number(query.minPrice);
+    }
+
+    if (query.maxPrice) {
+      where.base_price[Op.lte] = Number(query.maxPrice);
+    }
+  }
+
+  if (query.search) {
+    where.name = {
+      [Op.like]: `%${query.search}%`
     };
-
-    if (filters.category_id) {
-      where.category_id = filters.category_id;
-    }
-
-    if (filters.search) {
-      const { Op } = require("sequelize");
-
-      where.product_name = {
-        [Op.like]: `%${filters.search}%`
-      };
-    }
-
-    return Product.findAll({
-      where,
-      include: [
-        {
-          model: ProductImage,
-          as: "images"
-        },
-        {
-          model: ProductVariant,
-          as: "variants",
-          where: {
-            status: "active"
-          },
-          required: false,
-          include: [
-            {
-              model: Inventory,
-              as: "inventories",
-              attributes: [
-                "quantity_available",
-                "quantity_reserved"
-              ],
-              required: false
-            }
-          ]
-        }
-      ]
-    });
   }
 
-  async getProductDetails(productId) {
-    const product = await Product.findOne({
-      where: {
-        id: productId,
-        status: "published"
-      },
-      include: [
-        {
-          model: ProductImage,
-          as: "images"
-        },
-        {
-          model: ProductVariant,
-          as: "variants",
-          where: {
-            status: "active"
-          },
-          required: false,
-          include: [
-            {
-              model: Inventory,
-              as: "inventories",
-              required: false
-            }
-          ]
-        }
-      ]
-    });
+  const { count, rows } = await Product.findAndCountAll({
+    where,
+    include: this.getProductIncludes(),
+    distinct: true,
+    limit,
+    offset,
+    order: this.getSorting(query.sortBy)
+  });
 
-    if (!product) {
-      throw new Error("Product not found");
+  return {
+    products: rows,
+    pagination: {
+      total: count,
+      currentPage: page,
+      limit,
+      totalPages: Math.ceil(count / limit),
+      hasNextPage: page < Math.ceil(count / limit),
+      hasPreviousPage: page > 1
     }
-
-    return product;
   }
+}
+
+
+
+async getProductDetails(productId){
+  const product = await Product.findOne({
+    where: {
+      id: productId,
+      status: "PUBLISHED"
+    },
+    include: this.getProductIncludes()
+  });
+
+  if (!product) {
+    throw new Error("Product not found");
+  }
+
+  return product;
+};
+
 
   async checkAvailability(variantId) {
     const variant = await ProductVariant.findOne({
@@ -106,7 +133,7 @@ class CustomerProductService {
         },
         {
           model: Inventory,
-          as: "inventories",
+          as: "inventory",
           required: false
         }
       ]
@@ -146,6 +173,249 @@ class CustomerProductService {
           : "Out of stock"
     };
   }
+getPagination(query) {
+  const page = Math.max(1, parseInt(query.page, 10) || 1);
+
+  const limit = Math.min(
+    50,
+    Math.max(1, parseInt(query.limit, 10) || 10)
+  );
+
+  const offset = (page - 1) * limit;
+
+  return {
+    page,
+    limit,
+    offset
+  };
+}
+
+getSorting(sortBy) {
+  const allowedSorts = {
+    newest: [
+      ["created_at", "DESC"]
+    ],
+
+    price_low: [
+      [
+        Sequelize.literal(`(
+          SELECT MIN(
+            CASE
+              WHEN pv.sale_price IS NOT NULL
+                AND pv.sale_price > 0
+                AND pv.sale_price < pv.price
+              THEN pv.sale_price
+              ELSE pv.price
+            END
+          )
+          FROM Product_Variants AS pv
+          WHERE pv.product_id = Product.id
+          AND pv.status = 'ACTIVE'
+        )`),
+        "ASC"
+      ]
+    ],
+
+    price_high: [
+      [
+        Sequelize.literal(`(
+          SELECT MIN(
+            CASE
+              WHEN pv.sale_price IS NOT NULL
+                AND pv.sale_price > 0
+                AND pv.sale_price < pv.price
+              THEN pv.sale_price
+              ELSE pv.price
+            END
+          )
+          FROM Product_Variants AS pv
+          WHERE pv.product_id = Product.id
+          AND pv.status = 'ACTIVE'
+        )`),
+        "DESC"
+      ]
+    ],
+
+    name: [
+      ["product_name", "ASC"]
+    ]
+  };
+
+  return allowedSorts[sortBy] || allowedSorts.newest;
+}
+
+
+async searchProducts (query) {
+  const { page, limit, offset } = getPagination(query);
+
+  if (!query.q || !query.q.trim()) {
+    throw new Error("Search keyword is required");
+  }
+
+  const keyword = query.q.trim();
+
+  const { count, rows } = await Product.findAndCountAll({
+    where: {
+      status: "PUBLISHED",
+      [Op.or]: [
+        { name: { [Op.like]: `%${keyword}%` } },
+        { description: { [Op.like]: `%${keyword}%` } }
+      ]
+    },
+    include: getProductIncludes(),
+    distinct: true,
+    limit,
+    offset
+  });
+
+  return {
+    products: rows,
+    pagination: {
+      total: count,
+      page,
+      limit,
+      totalPages: Math.ceil(count / limit)
+    }
+  };
+};
+
+
+async getProductsByCategory  (categoryId, query)  {
+  return this.getProducts({
+    ...query,
+    categoryId
+  });
+};
+
+async getProductsBySubcategory  (
+  subcategoryId,
+  query
+)  {
+  return this.getProducts({
+    ...query,
+    subcategoryId
+  });
+};
+
+async getProductVariants  (productId) {
+  const product = await Product.findOne({
+    where: {
+      id: productId,
+      status: "PUBLISHED"
+    }
+  });
+
+  if (!product) {
+    throw new Error("Product not found");
+  }
+
+  return ProductVariant.findAll({
+    where: {
+      product_id: productId,
+      status: "ACTIVE"
+    },
+    attributes: [
+      "id",
+      "sku",
+      "color",
+      "size",
+      "price",
+      "sale_price",
+      "fit"
+    ]
+  });
+};
+
+
+async getFeaturedProducts(query) {
+  const { limit, offset, page } = getPagination(query);
+
+  const { count, rows } = await Product.findAndCountAll({
+    where: {
+      status: "PUBLISHED",
+      is_featured: true
+    },
+    include: getProductIncludes(),
+    distinct: true,
+    limit,
+    offset,
+    order: [["created_at", "DESC"]]
+  });
+
+  return {
+    products: rows,
+    pagination: {
+      total: count,
+      page,
+      limit,
+      totalPages: Math.ceil(count / limit)
+    }
+  };
+};
+
+async getNewArrivals (query) {
+  return getProducts({
+    ...query,
+    sortBy: "newest"
+  });
+};
+
+async getOnSaleProducts (query) {
+  const { limit, offset, page } = getPagination(query);
+
+  const { count, rows } = await Product.findAndCountAll({
+    where: {
+      status: "PUBLISHED",
+      sale_price: {
+        [Op.gt]: 0,
+        [Op.lt]: Sequelize.col("price")
+      }
+    },
+    include: getProductIncludes(),
+    distinct: true,
+    limit,
+    offset
+  });
+
+  return {
+    products: rows,
+    pagination: {
+      total: count,
+      page,
+      limit,
+      totalPages: Math.ceil(count / limit)
+    }
+  };
+};
+
+async getRelatedProducts (productId, query) {
+  const product = await Product.findOne({
+    where: {
+      id: productId,
+      status: "PUBLISHED"
+    },
+    attributes: ["id", "category_id", "subcategory_id"]
+  });
+
+  if (!product) {
+    throw new Error("Product not found");
+  }
+
+  const { limit } = getPagination(query);
+
+  return Product.findAll({
+    where: {
+      id: { [Op.ne]: productId },
+      category_id: product.category_id,
+      status: "PUBLISHED"
+    },
+    include: getProductIncludes(),
+    limit,
+    order: [["created_at", "DESC"]]
+  });
+};
+
+
 }
 
 module.exports = new CustomerProductService();
