@@ -73,6 +73,11 @@ seller_type: {
     }
   );
     ProductVariant.associate = (models) => {
+      ProductVariant.hasMany(models.ProductVariantImage, {
+      foreignKey: "variant_id",
+      as: "images",
+      onDelete: "CASCADE"
+      }); 
     ProductVariant.belongsTo(models.Product, { foreignKey: 'product_id', as: 'product' });
     ProductVariant.hasMany(models.Inventory, { foreignKey: 'variant_id', as: 'inventory' });
     ProductVariant.hasMany(models.CartItem, { foreignKey: 'variant_id', as: 'cartItems' });

@@ -58,6 +58,90 @@ exports.checkAvailability = async (req, res) => {
   }
 };
 
+
+// GET /categories
+  exports.getCategories = async(req, res, next)=> {
+    try {
+      console.log('this is the one')
+      const result = await CustomerProductService.getCategories(req.query);
+
+      return res.status(200).json({
+        success: true,
+        message: "Categories fetched successfully",
+        data: result
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // GET /categories/:categoryId
+  exports.getCategoryById = async(req, res, next)=> {
+    try {
+      const result = await CustomerProductService.getCategoryById(
+        req.params.categoryId
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Category fetched successfully",
+        data: result
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // GET /categories/:categoryId/subcategories
+  exports.getSubcategoriesByCategory = async (req, res, next) => {
+    try {
+      const result = await CustomerProductService.getSubcategoriesByCategory(
+        req.params.categoryId,
+        req.query
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Subcategories fetched successfully",
+        data: result
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // GET /subcategories
+  exports.getSubcategories = async (req, res, next) => {
+    try {
+      const result = await CustomerProductService.getSubcategories(req.query);
+
+      return res.status(200).json({
+        success: true,
+        message: "Subcategories fetched successfully",
+        data: result
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // GET /subcategories/:subcategoryId
+  exports.getSubcategoryById = async (req, res, next)=> {
+    try {
+      const result = await CustomerProductService.getSubcategoryById(
+        req.params.subcategoryId
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Subcategory fetched successfully",
+        data: result
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
 exports.searchProducts = async (req, res, next) => {
   try {
     const result = await CustomerProductService.searchProducts(req.query);
@@ -162,6 +246,43 @@ exports.getProductsBySubcategory = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getProductVariantsByCategory = async (req, res, next) => {
+  try {
+    const result =
+      await CustomerProductService.getProductVariantsByCategory(
+        req.params.categoryId,
+        req.query
+      );
+
+    return res.status(200).json({
+      success: true,
+      message: "Product variants fetched successfully",
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+exports.getProductVariantsBySubcategory = async (req, res, next) => {
+  try {
+    const result =
+      await CustomerProductService.getProductVariantsBySubcategory(
+        req.params.subcategoryId,
+        req.query
+      );
+
+    return res.status(200).json({
+      success: true,
+      message: "Product variants fetched successfully",
       data: result
     });
   } catch (error) {

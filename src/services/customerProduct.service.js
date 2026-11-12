@@ -1,7 +1,7 @@
 const {
   Product,
   ProductVariant,
-  ProductImage,
+  ProductVariantImage,
   Inventory,
   Category,
 Subcategory
@@ -21,7 +21,7 @@ class CustomerProductService {
     attributes: ["id", "subcategory_name"]
   },
   {
-    model: ProductImage,
+    model: ProductVariantImage,
     as: "images",
     attributes: ["id", "image_url"]
   },
@@ -189,7 +189,18 @@ getPagination(query) {
     offset
   };
 }
+ getPaginationResponse(count, page, limit) {
+    const totalPages = Math.ceil(count / limit);
 
+    return {
+      total: count,
+      currentPage: page,
+      limit,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1
+    };
+  }
 getSorting(sortBy) {
   const allowedSorts = {
     newest: [
@@ -245,6 +256,217 @@ getSorting(sortBy) {
 }
 
 
+
+  async getCategories(query) {
+  try {
+    const { page, limit, offset } = this.getPagination(query);
+
+    const where = {
+      status: "ACTIVE"
+    };
+
+    if (query.search) {
+      where.category_name = {
+        [Op.like]: `%${query.search}%`
+      };
+    }
+
+    const result = await Category.findAndCountAll({
+      where,
+      attributes: [
+        "id",
+        "category_name",
+        "image",
+        "created_at"
+      ],
+      limit,
+      offset,
+      order: [["created_at", "DESC"]]
+    });
+
+    return {
+      categories: result.rows,
+      pagination: this.getPaginationResponse(
+        result.count,
+        page,
+        limit
+      )
+    };
+
+  } catch (error) {
+    console.error("CATEGORY QUERY ERROR:", error.message);
+    console.error("MYSQL ERROR:", error.original);
+    console.error("GENERATED SQL:", error.sql);
+
+    throw error;
+  }
+}
+
+
+  async getCategoryById(categoryId) {
+    const category = await Category.findOne({
+      where: {
+        id: categoryId,
+        status: "ACTIVE"
+      },
+      attributes: [
+        "id",
+        "category_name",
+        "image",
+        "created_at"
+      ]
+    });
+
+    if (!category) {
+      throw new Error("Category not found");
+    }
+
+    return category;
+  }
+
+
+  async getSubcategoriesByCategory(categoryId, query) {
+    const category = await Category.findOne({
+      where: {
+        id: categoryId,
+        status: "ACTIVE"
+      },
+      attributes: ["id", "category_name"]
+    });
+
+    if (!category) {
+      throw new Error("Category not found");
+    }
+
+    const { page, limit, offset } = this.getPagination(query);
+
+    const where = {
+      category_id: categoryId,
+      status: "ACTIVE"
+    };
+
+    if (query.search) {
+      where.subcategory_name = {
+        [Op.like]: `%${query.search}%`
+      };
+    }
+
+    const { count, rows } = await Subcategory.findAndCountAll({
+      where,
+      attributes: [
+        "id",
+        "category_id",
+        "subcategory_name",
+        "image",
+        "created_at"
+      ],
+      limit,
+      offset,
+      order: [["created_at", "DESC"]]
+    });
+
+    return {
+      category: {
+        id: category.id,
+        category_name: category.category_name
+      },
+      subcategories: rows,
+      pagination: this.getPaginationResponse(
+        count,
+        page,
+        limit
+      )
+    };
+  }
+
+  async getSubcategories(query) {
+    const { page, limit, offset } = this.getPagination(query);
+
+    const where = {
+      status: "ACTIVE"
+    };
+
+    if (query.categoryId) {
+      where.category_id = query.categoryId;
+    }
+
+    if (query.search) {
+      where.subcategory_name = {
+        [Op.like]: `%${query.search}%`
+      };
+    }
+
+    const { count, rows } = await Subcategory.findAndCountAll({
+      where,
+      attributes: [
+        "id",
+        "category_id",
+        "subcategory_name",
+        "image",
+        "created_at"
+      ],
+      include: [
+        {
+          model: Category,
+          as: "category",
+          attributes: ["id", "category_name"],
+          where: {
+            status: "ACTIVE"
+          },
+          required: true
+        }
+      ],
+      distinct: true,
+      limit,
+      offset,
+      order: [["created_at", "DESC"]]
+    });
+
+    return {
+      subcategories: rows,
+      pagination: this.getPaginationResponse(
+        count,
+        page,
+        limit
+      )
+    };
+  }
+
+
+  async getSubcategoryById(subcategoryId) {
+    const subcategory = await Subcategory.findOne({
+      where: {
+        id: subcategoryId,
+        status: "ACTIVE"
+      },
+      attributes: [
+        "id",
+        "category_id",
+        "subcategory_name",
+        "image",
+        "created_at"
+      ],
+      include: [
+        {
+          model: Category,
+          as: "category",
+          attributes: ["id", "category_name"],
+          where: {
+            status: "ACTIVE"
+          },
+          required: true
+        }
+      ]
+    });
+
+    if (!subcategory) {
+      throw new Error("Subcategory not found");
+    }
+
+    return subcategory;
+  }
+
+
 async searchProducts (query) {
   const { page, limit, offset } = getPagination(query);
 
@@ -296,6 +518,105 @@ async getProductsBySubcategory  (
     subcategoryId
   });
 };
+
+
+async getProductVariantsByCategory(categoryId, query) {
+  const { page, limit, offset } = this.getPagination(query);
+
+  const category = await Category.findByPk(categoryId);
+
+  if (!category) {
+    throw new Error("Category not found");
+  }
+
+  const { count, rows } = await ProductVariant.findAndCountAll({
+    where: {
+      status: "ACTIVE"
+    },
+
+    include: [
+      {
+        model: Product,
+        as: "product",
+        required: true,
+        where: {
+          category_id: categoryId,
+          status: "PUBLISHED"
+        }
+      },
+      {
+        model: ProductVariantImage,
+        as: "images",
+        required: false,
+        attributes: [
+          "id",
+          "variant_id",
+          "image_url",
+          "display_order"
+        ]
+      }
+    ],
+
+    distinct: true,
+    limit,
+    offset,
+    order: [["created_at", "DESC"]]
+  });
+
+  return {
+    variants: rows,
+    pagination: this.getPaginationResponse(count, page, limit)
+  };
+}
+
+async getProductVariantsBySubcategory(subcategoryId, query) {
+  const { page, limit, offset } = this.getPagination(query);
+
+  const subcategory = await Subcategory.findByPk(subcategoryId);
+
+  if (!subcategory) {
+    throw new Error("Subcategory not found");
+  }
+
+  const { count, rows } = await ProductVariant.findAndCountAll({
+    where: {
+      status: "ACTIVE"
+    },
+
+    include: [
+      {
+        model: Product,
+        as: "product",
+        required: true,
+        where: {
+          subcategory_id: subcategoryId,
+          status: "PUBLISHED"
+        }
+      },
+       {
+        model: ProductVariantImage,
+        as: "images",
+        required: false,
+        attributes: [
+          "id",
+          "variant_id",
+          "image_url",
+          "display_order"
+        ]
+      }
+    ],
+
+    distinct: true,
+    limit,
+    offset,
+    order: [["created_at", "DESC"]]
+  });
+
+  return {
+    variants: rows,
+    pagination: this.getPaginationResponse(count, page, limit)
+  };
+}
 
 async getProductVariants  (productId) {
   const product = await Product.findOne({

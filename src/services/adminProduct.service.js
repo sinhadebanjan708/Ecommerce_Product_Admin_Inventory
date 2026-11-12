@@ -2,6 +2,7 @@ const {
   sequelize,
   Product,
   ProductVariant,
+  ProductVariantImage,
   Inventory,
   StockMovement,
   LowStockAlert,
@@ -13,7 +14,7 @@ const { Op } = require("sequelize");
 class AdminProductService {
     
     
-async createProduct(data, adminId) {
+async createProduct(data, adminId , imageFile) {
   return sequelize.transaction(async (transaction) => {
 
     // 1. Validate product
@@ -24,48 +25,36 @@ async createProduct(data, adminId) {
     if (!data.category_id) {
       throw new Error("Product category is required");
     }
-
-    if (!Array.isArray(data.variants) || data.variants.length === 0) {
-      throw new Error("At least one product variant is required");
+    if (!data.subcategory_id) {
+      throw new Error("Product subcategory is required");
     }
+
+    // if (!Array.isArray(data.variants) || data.variants.length === 0) {
+    //   throw new Error("At least one product variant is required");
+    // }
+
+        // 2. Validate image
+    if (!imageFile) {
+      throw new Error("Product image is required");
+    }
+
 
     // 2. Create product
     const product = await Product.create(
       {
         category_id: data.category_id,
+        subcategory_id: data.subcategory_id,
         created_by:1,
         product_name: data.name,
         slug: data.slug,
         description: data.description || null,
         base_price: data.base_price,
         status: "draft",
-        created_by: adminId
+        created_by: adminId,
+        image: `/uploads/product/${imageFile.filename}`,
       },
       { transaction }
     );
-
-    // 3. Create variants and inventory
-    // for (const variantData of data.variants) {
-s
-    //   if (!variantData.sku || variantData.price == null) {
-    //     throw new Error("Each variant requires SKU and price");
-    //   }
-
-    //   const initialStock = Number(variantData.initial_stock ?? 0);
-
-    //   if (!Number.isInteger(initialStock) || initialStock < 0) {
-    //     throw new Error("Initial stock must be a non-negative integer");
-    //   }
-
-    //   const reorderLevel = Number(
-    //     variantData.reorder_level ?? 5
-    //   );
-
-    //   if (!Number.isInteger(reorderLevel) || reorderLevel < 0) {
-    //     throw new Error("Reorder level must be a non-negative integer");
-    //   }
-
-    // }
 
     // 7. Return created product with variants and inventory
     return Product.findByPk(product.id, {
@@ -159,7 +148,7 @@ async updateProduct (productId, data, adminId) {
   return this.getProductById(productId);
 };
 
-async createVariant(productId, data, adminId) {
+async createVariant(productId, data, adminId , imageFiles = []) {
   const transaction = await sequelize.transaction();
 
   try {
@@ -238,6 +227,21 @@ if (deliveryDate.getTime() !== currentDate.getTime()) {
       { transaction }
     );
 
+        // 5. Save variant images
+if (imageFiles.length > 0) {
+
+  const imageRecords = imageFiles.map((file, index) => ({
+    variant_id: variant.id,
+    image_url: `/uploads/productvariant/${file.filename}`,
+    display_order: index + 1
+  }));
+
+  await ProductVariantImage.bulkCreate(
+    imageRecords,
+    { transaction }
+  );
+}
+
     // 5. Create inventory for inventory-based products
     if (data.seller_type === "Inventory") {
 
@@ -308,7 +312,10 @@ if (deliveryDate.getTime() !== currentDate.getTime()) {
       message: "Inventory variant created successfully",
       status: true,
       variant,
-      inventory
+      inventory,
+      images: imageFiles.map(file =>
+        `/uploads/productvariant/${file.filename}`
+      )
     };
 
   } catch (error) {

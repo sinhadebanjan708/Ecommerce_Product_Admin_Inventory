@@ -24,7 +24,8 @@ const createProduct = async (req, res) => {
   try {
     const product = await service.createProduct(
       req.body,
-      getAdminId(req)
+      getAdminId(req),
+      req.file
     );
 
     return res.status(201).json({
@@ -142,6 +143,13 @@ const createVariant = async (req, res) => {
       });
     }
 
+    if (req.files && req.files.length > 4) {
+      return res.status(400).json({
+        success: false,
+        message: "Maximum 4 variant images are allowed"
+      });
+    }
+
     const result = await service.createVariant(
       productId,
       {
@@ -159,7 +167,8 @@ const createVariant = async (req, res) => {
         quantity_available,
         reorder_level
       },
-      adminId
+      adminId,
+      req.files || []
     );
 
     return res.status(201).json({

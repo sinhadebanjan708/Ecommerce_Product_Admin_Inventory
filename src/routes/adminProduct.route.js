@@ -10,13 +10,17 @@ const {
   authorizeRoles
 } = require("../middleware/authMiddleWare");
 
+const {
+    productUpload,productVariantUpload
+} = require("../middleware/uploadMiddleware");
+
 const adminOnly = [
   authMiddleware,
   authorizeRoles("ADMIN")
 ];
 
 // Products
-router.post("/products", ...adminOnly, controller.createProduct);
+router.post("/products", ...adminOnly,   productUpload.single("image"), controller.createProduct);
 
 router.get("/products", ...adminOnly, controller.listProducts);
 
@@ -34,7 +38,7 @@ router.put(
 
 router.post(
   "/products/:productId/variants",
- ...adminOnly,
+ ...adminOnly, productVariantUpload.array("images", 4),
   controller.createVariant
 );
 router.put(

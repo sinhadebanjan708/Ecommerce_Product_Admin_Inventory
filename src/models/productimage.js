@@ -1,37 +1,40 @@
 module.exports = (sequelize, DataTypes) => {
-  const ProductImage = sequelize.define('ProductImage', {
-    id: {
-      type: DataTypes.BIGINT.UNSIGNED,
-      autoIncrement: true,
-      primaryKey: true
-    },
-    product_id: {
-      type: DataTypes.BIGINT.UNSIGNED,
-      allowNull: false
-    },
-    image_url: {
-      type: DataTypes.STRING(500),
-      allowNull: false
-    },
-    is_primary: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false
-    },
-    display_order: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 0
-    }
-  }, {
-    tableName: 'Product_Images',
-    timestamps: true,
-    underscored: true
-  });
+  const ProductVariantImage = sequelize.define(
+    "ProductVariantImage",
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+      },
 
-  ProductImage.associate = (models) => {
-    ProductImage.belongsTo(models.Product, { foreignKey: 'product_id', as: 'product' });
+      variant_id: {
+        type: DataTypes.BIGINT.UNSIGNED,
+        allowNull: false
+      },
+
+      image_url: {
+        type: DataTypes.STRING,
+        allowNull: false
+      },
+
+      display_order: {
+        type: DataTypes.INTEGER,
+        defaultValue: 1
+      }
+    },
+    {
+      tableName: "product_variant_images",
+      timestamps: true
+    }
+  );
+
+  ProductVariantImage.associate = (models) => {
+    ProductVariantImage.belongsTo(models.ProductVariant, {
+  foreignKey: "variant_id",
+  as: "variant"
+});
   };
 
-  return ProductImage;
+  return ProductVariantImage;
 };

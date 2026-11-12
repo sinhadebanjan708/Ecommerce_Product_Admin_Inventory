@@ -43,6 +43,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.TEXT,
         allowNull: true
       },
+     image: {
+        type: DataTypes.STRING,
+        allowNull: true
+      },
 
       base_price: {
         type: DataTypes.DECIMAL(12, 2),
@@ -83,7 +87,7 @@ module.exports = (sequelize, DataTypes) => {
   console.log("Category:", models.Category);
   console.log("Subcategory:", models.Subcategory);
   console.log("User:", models.User);
-  console.log("ProductImage:", models.ProductImage);
+  console.log("ProductImage:", models.ProductVariantImage);
   console.log("ProductVariant:", models.ProductVariant);
   console.log("ProductReview:", models.ProductReview);
     Product.belongsTo(models.Category, { foreignKey: 'category_id', as: 'category' });
@@ -92,7 +96,7 @@ module.exports = (sequelize, DataTypes) => {
     as: "subcategory"
     });
     Product.belongsTo(models.User, { foreignKey: 'created_by', as: 'creator' });
-    Product.hasMany(models.ProductImage, { foreignKey: 'product_id', as: 'images' });
+    Product.hasMany(models.ProductVariantImage, { foreignKey: 'product_id', as: 'images' });
     Product.hasMany(models.ProductVariant, { foreignKey: 'product_id', as: 'variants' });
     Product.hasMany(models.ProductReview, { foreignKey: 'product_id', as: 'reviews' });
   };
