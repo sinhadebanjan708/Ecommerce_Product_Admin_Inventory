@@ -73,6 +73,10 @@ app.use(
 );
 
 app.use(
+  "/api/ecommerce/wishlist",
+  require("./routes/wishlist.route")
+);
+app.use(
   "/api/ecommerce/checkout",
   require("./routes/checkout.route")
 );

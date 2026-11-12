@@ -81,11 +81,15 @@ seller_type: {
     ProductVariant.belongsTo(models.Product, { foreignKey: 'product_id', as: 'product' });
     ProductVariant.hasMany(models.Inventory, { foreignKey: 'variant_id', as: 'inventory' });
     ProductVariant.hasMany(models.CartItem, { foreignKey: 'variant_id', as: 'cartItems' });
+    ProductVariant.hasMany(models.WishlistItem, {
+      foreignKey: "variant_id",
+      as: "wishlistItems"
+    });
     ProductVariant.hasMany(models.OrderItem, { foreignKey: 'variant_id', as: 'orderItems' });
     ProductVariant.hasMany(models.StockMovement, {
-  foreignKey: "variant_id",
-  as: "stockMovements"
-});
+    foreignKey: "variant_id",
+    as: "stockMovements"
+    });
   };
   return ProductVariant;
 };

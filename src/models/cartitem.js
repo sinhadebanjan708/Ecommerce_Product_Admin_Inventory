@@ -16,6 +16,10 @@ module.exports = (sequelize, DataTypes) => {
     quantity: {
       type: DataTypes.INTEGER,
       allowNull: false
+    },
+    size:{
+       type: DataTypes.STRING,
+      allowNull: false
     }
   }, {
     tableName: 'Cart_Items',
