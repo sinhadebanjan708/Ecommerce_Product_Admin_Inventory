@@ -20,6 +20,10 @@ module.exports = (sequelize, DataTypes) => {
     unit_price: {
       type: DataTypes.DECIMAL(12, 2),
       allowNull: false
+    },
+      expected_delivery_date: {
+      type: DataTypes.DATE,
+      allowNull: false
     }
   }, {
     tableName: 'Order_Items',

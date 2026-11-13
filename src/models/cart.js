@@ -9,6 +9,10 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.BIGINT.UNSIGNED,
       allowNull: false
     },
+    selected_address_id:{
+      type: DataTypes.BIGINT.UNSIGNED,
+      allowNull: false
+    },
     status: {
       type: DataTypes.STRING(30),
       allowNull: false,

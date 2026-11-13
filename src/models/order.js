@@ -25,6 +25,10 @@ module.exports = (sequelize, DataTypes) => {
     payment_status: {
       type: DataTypes.STRING(40),
       allowNull: false
+    },
+    expected_delivery_date: {
+      type: DataTypes.DATE,
+      allowNull: false
     }
   }, {
     tableName: 'Orders',

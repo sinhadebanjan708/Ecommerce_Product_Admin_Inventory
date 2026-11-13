@@ -12,6 +12,20 @@ const customerOnly = [
   authorizeRoles("CUSTOMER")
 ];
 
-router.post("/", ...customerOnly, controller.createOrder);
+router.post("/create-order", ...customerOnly, controller.createOrder);
+
+// GET CHECKOUT SUMMARY
+router.get(
+  "/summary",
+  ...customerOnly,
+  controller.getCheckoutSummary
+);
+
+// SELECT DELIVERY ADDRESS
+router.patch(
+  "/address",
+  ...customerOnly,
+  controller.selectDeliveryAddress
+);
 
 module.exports = router;
